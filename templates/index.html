@@ -300,13 +300,7 @@ if (SpeechRecognition) {
     sendMessage(heard);
   };
 
-  commandRecognition.onend = () => {
-    commandRecognition = new SpeechRecognition();
-    commandRecognition.continuous = false;
-    commandRecognition.interimResults = false;
-    commandRecognition.lang = "en-US";
-    commandRecognition.onresult = arguments.callee.caller ? undefined : undefined;
-  };
+ commandRecognition.onend = () => {};
 
   function listenForCommand() {
     status.textContent = "Listening...";
