@@ -2,96 +2,169 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Jarvis</title>
+<title>J.A.R.V.I.S.</title>
 <style>
+  * { box-sizing: border-box; }
   body {
-    font-family: Arial, sans-serif;
-    background: #1e1e1e;
-    color: #fff;
+    font-family: 'Courier New', monospace;
+    background: #0a0e14;
+    color: #8fd8ff;
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    align-items: center;
+    min-height: 100vh;
     margin: 0;
-  }
-  #chat {
-    flex: 1;
-    overflow-y: auto;
     padding: 20px;
   }
-  .msg {
-    margin: 10px 0;
-    padding: 10px 15px;
-    border-radius: 10px;
-    max-width: 70%;
+  h1 {
+    letter-spacing: 4px;
+    font-size: 18px;
+    color: #4fc3f7;
+    margin: 10px 0 30px;
   }
-  .user {
-    background: #3a7afe;
-    margin-left: auto;
-    text-align: right;
+  #dial {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    border: 2px solid #1c3d52;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
   }
-  .jarvis {
-    background: #333;
+  #dial::before {
+    content: "";
+    position: absolute;
+    width: 85%;
+    height: 85%;
+    border-radius: 50%;
+    border: 1px dashed #234b63;
   }
+  #core {
+    width: 55%;
+    height: 55%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #1a4a63, #0a1f2c);
+    box-shadow: 0 0 25px rgba(79, 195, 247, 0.4);
+    transition: box-shadow 0.3s;
+  }
+  #core.active {
+    box-shadow: 0 0 45px rgba(79, 195, 247, 0.8);
+  }
+  #status {
+    margin: 15px 0 25px;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: #4fc3f7;
+    text-transform: uppercase;
+  }
+  #transcript {
+    width: 100%;
+    max-width: 500px;
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    max-height: 300px;
+  }
+  .line {
+    margin: 8px 0;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .line .who {
+    color: #4fc3f7;
+    font-weight: bold;
+    margin-right: 8px;
+  }
+  .line.user .who { color: #8fd8ff; }
+  .line.jarvis .who { color: #4fc3f7; }
   #inputArea {
     display: flex;
-    padding: 15px;
-    background: #2a2a2a;
+    width: 100%;
+    max-width: 500px;
+    gap: 10px;
   }
   #userInput {
     flex: 1;
-    padding: 10px;
-    border-radius: 5px;
-    border: none;
-    font-size: 16px;
+    background: #10161f;
+    border: 1px solid #1c3d52;
+    color: #8fd8ff;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
   }
+  #userInput:focus { outline: none; border-color: #4fc3f7; }
   #sendBtn {
-    margin-left: 10px;
-    padding: 10px 20px;
-    border: none;
-    background: #3a7afe;
-    color: white;
-    border-radius: 5px;
+    background: #123246;
+    border: 1px solid #4fc3f7;
+    color: #4fc3f7;
+    padding: 12px 20px;
+    border-radius: 6px;
     cursor: pointer;
+    font-family: inherit;
   }
+  #sendBtn:hover { background: #1a4a63; }
 </style>
 </head>
 <body>
 
-<div id="chat"></div>
+<h1>J . A . R . V . I . S .</h1>
+
+<div id="dial"><div id="core"></div></div>
+<div id="status">Systems online</div>
+
+<div id="transcript"></div>
 
 <div id="inputArea">
-  <input type="text" id="userInput" placeholder="Talk to Jarvis..." />
+  <input type="text" id="userInput" placeholder="Talk to Jarvis..." autocomplete="off" />
   <button id="sendBtn">Send</button>
 </div>
 
 <script>
-const chat = document.getElementById("chat");
+const transcript = document.getElementById("transcript");
 const input = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
+const status = document.getElementById("status");
+const core = document.getElementById("core");
 
-function addMessage(text, sender) {
+function addLine(text, who) {
   const div = document.createElement("div");
-  div.className = "msg " + sender;
-  div.textContent = text;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
+  div.className = "line " + who;
+  const label = document.createElement("span");
+  label.className = "who";
+  label.textContent = who === "user" ? "YOU:" : "JARVIS:";
+  div.appendChild(label);
+  div.appendChild(document.createTextNode(text));
+  transcript.appendChild(div);
+  transcript.scrollTop = transcript.scrollHeight;
 }
 
 async function sendMessage() {
   const message = input.value.trim();
   if (!message) return;
 
-  addMessage(message, "user");
+  addLine(message, "user");
   input.value = "";
+  status.textContent = "Processing";
+  core.classList.add("active");
 
-  const response = await fetch("/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message })
-  });
+  try {
+    const response = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message })
+    });
+    const data = await response.json();
+    addLine(data.reply, "jarvis");
+    status.textContent = "Systems online";
+  } catch (err) {
+    addLine("Connection error. Please try again.", "jarvis");
+    status.textContent = "Systems online";
+  }
 
-  const data = await response.json();
-  addMessage(data.reply, "jarvis");
+  core.classList.remove("active");
 }
 
 sendBtn.addEventListener("click", sendMessage);
