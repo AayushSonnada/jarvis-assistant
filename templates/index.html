@@ -164,7 +164,7 @@
 </svg>
 </div>
 <div id="status">Online</div>
-<button id="micBtn" title="Click to talk">&#127908;</button>
+<button id="micBtn" title="Click to enable wake word">&#127908;</button>
 
 <div id="transcript"></div>
 
@@ -209,12 +209,13 @@ function addLine(text, who) {
   transcript.scrollTop = transcript.scrollHeight;
 }
 
-function speak(text) {
-  if (!("speechSynthesis" in window)) return;
+function speak(text, onDone) {
+  if (!("speechSynthesis" in window)) { if (onDone) onDone(); return; }
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.rate = 1;
   utter.pitch = 1;
+  if (onDone) utter.onend = onDone;
   window.speechSynthesis.speak(utter);
 }
 
@@ -235,12 +236,15 @@ async function sendMessage(text) {
     });
     const data = await response.json();
     addLine(data.reply, "jarvis");
-    speak(data.reply);
+    speak(data.reply, () => {
+      if (wakeWordMode) startWakeListening();
+    });
   } catch (err) {
     addLine("Connection error. Please try again.", "jarvis");
+    if (wakeWordMode) startWakeListening();
   }
 
-  status.textContent = "Online";
+  status.textContent = wakeWordMode ? "Listening for \u201cJarvis\u201d" : "Online";
   core.classList.remove("active");
 }
 
@@ -250,43 +254,86 @@ input.addEventListener("keypress", (e) => {
 });
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition = null;
-let listening = false;
+let wakeRecognition = null;
+let commandRecognition = null;
+let wakeWordMode = false;
+let listeningForWake = false;
 
 if (SpeechRecognition) {
-  recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  recognition.lang = "en-US";
+  wakeRecognition = new SpeechRecognition();
+  wakeRecognition.continuous = true;
+  wakeRecognition.interimResults = false;
+  wakeRecognition.lang = "en-US";
 
-  recognition.onstart = () => {
-    listening = true;
-    micBtn.classList.add("listening");
-    status.textContent = "Listening";
+  wakeRecognition.onresult = (event) => {
+    const last = event.results[event.results.length - 1];
+    const heard = last[0].transcript.toLowerCase();
+    if (heard.includes("jarvis")) {
+      wakeRecognition.stop();
+      const afterWake = heard.split("jarvis").slice(1).join("jarvis").trim();
+      if (afterWake.length > 2) {
+        sendMessage(afterWake);
+      } else {
+        listenForCommand();
+      }
+    }
   };
 
-  recognition.onend = () => {
-    listening = false;
-    micBtn.classList.remove("listening");
-    status.textContent = "Online";
+  wakeRecognition.onend = () => {
+    listeningForWake = false;
+    if (wakeWordMode && !commandRecognition) {
+      setTimeout(startWakeListening, 300);
+    }
   };
 
-  recognition.onerror = () => {
-    listening = false;
-    micBtn.classList.remove("listening");
-    status.textContent = "Online";
+  wakeRecognition.onerror = (e) => {
+    listeningForWake = false;
   };
 
-  recognition.onresult = (event) => {
+  commandRecognition = new SpeechRecognition();
+  commandRecognition.continuous = false;
+  commandRecognition.interimResults = false;
+  commandRecognition.lang = "en-US";
+
+  commandRecognition.onresult = (event) => {
     const heard = event.results[0][0].transcript;
     sendMessage(heard);
   };
 
+  commandRecognition.onend = () => {
+    commandRecognition = new SpeechRecognition();
+    commandRecognition.continuous = false;
+    commandRecognition.interimResults = false;
+    commandRecognition.lang = "en-US";
+    commandRecognition.onresult = arguments.callee.caller ? undefined : undefined;
+  };
+
+  function listenForCommand() {
+    status.textContent = "Listening...";
+    core.classList.add("active");
+    try {
+      commandRecognition.start();
+    } catch (e) {}
+  }
+
+  function startWakeListening() {
+    if (listeningForWake) return;
+    listeningForWake = true;
+    status.textContent = "Listening for \u201cJarvis\u201d";
+    try {
+      wakeRecognition.start();
+    } catch (e) {}
+  }
+
   micBtn.addEventListener("click", () => {
-    if (listening) {
-      recognition.stop();
+    wakeWordMode = !wakeWordMode;
+    if (wakeWordMode) {
+      micBtn.classList.add("listening");
+      startWakeListening();
     } else {
-      recognition.start();
+      micBtn.classList.remove("listening");
+      wakeRecognition.stop();
+      status.textContent = "Online";
     }
   });
 } else {
