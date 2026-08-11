@@ -7,7 +7,7 @@
   * { box-sizing: border-box; }
   body {
     font-family: 'Courier New', monospace;
-    background: #0a0e14;
+    background: #060a10;
     color: #8fd8ff;
     display: flex;
     flex-direction: column;
@@ -16,44 +16,48 @@
     margin: 0;
     padding: 20px;
   }
-  h1 {
-    letter-spacing: 4px;
-    font-size: 18px;
-    color: #4fc3f7;
-    margin: 10px 0 30px;
-  }
-  #dial {
-    position: relative;
-    width: 260px;
-    height: 260px;
-    border-radius: 50%;
-    border: 2px solid #1c3d52;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  #dialWrap {
+    width: 300px;
+    height: 300px;
     margin-bottom: 10px;
   }
-  #dial::before {
-    content: "";
-    position: absolute;
-    width: 85%;
-    height: 85%;
-    border-radius: 50%;
-    border: 1px dashed #234b63;
+  #dashRing {
+    transform-origin: 150px 150px;
+    animation: spin-cw 30s linear infinite;
+  }
+  #cyanRing {
+    transform-origin: 150px 150px;
+    animation: spin-cw 16s linear infinite;
+  }
+  #orangeRing {
+    transform-origin: 150px 150px;
+    animation: spin-ccw 11s linear infinite;
+  }
+  @keyframes spin-cw {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes spin-ccw {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
   }
   #core {
-    width: 55%;
-    height: 55%;
-    border-radius: 50%;
-    background: radial-gradient(circle, #1a4a63, #0a1f2c);
-    box-shadow: 0 0 25px rgba(79, 195, 247, 0.4);
-    transition: box-shadow 0.3s;
+    transform-origin: 150px 150px;
+    animation: breathe 3s ease-in-out infinite;
   }
   #core.active {
-    box-shadow: 0 0 45px rgba(79, 195, 247, 0.8);
+    animation: think 0.6s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 0.85; }
+  }
+  @keyframes think {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
   }
   #status {
-    margin: 15px 0 25px;
+    margin: 12px 0 25px;
     font-size: 13px;
     letter-spacing: 3px;
     color: #4fc3f7;
@@ -71,6 +75,11 @@
     margin: 8px 0;
     font-size: 14px;
     line-height: 1.4;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   .line .who {
     color: #4fc3f7;
@@ -110,10 +119,29 @@
 </head>
 <body>
 
-<h1>J . A . R . V . I . S .</h1>
-
-<div id="dial"><div id="core"></div></div>
-<div id="status">Systems online</div>
+<div id="dialWrap">
+<svg viewBox="0 0 300 300" width="300" height="300">
+  <circle cx="150" cy="150" r="140" fill="none" stroke="#173045" stroke-width="1"/>
+  <g id="ticks" stroke="#2f5c78" stroke-width="2">
+    <g id="tickLines"></g>
+  </g>
+  <circle id="dashRing" cx="150" cy="150" r="118" fill="none" stroke="#1c3d52" stroke-width="1" stroke-dasharray="2 6"/>
+  <g id="cyanRing" fill="none" stroke="#29c1f0" stroke-width="14" stroke-linecap="round">
+    <path d="M 150 61 A 89 89 0 0 1 224.1 105.5" />
+    <path d="M 224.1 105.5 A 89 89 0 0 1 224.1 194.5" />
+    <path d="M 224.1 194.5 A 89 89 0 0 1 150 239" />
+    <path d="M 150 239 A 89 89 0 0 1 75.9 194.5" />
+    <path d="M 75.9 194.5 A 89 89 0 0 1 75.9 105.5" />
+    <path d="M 75.9 105.5 A 89 89 0 0 1 150 61" />
+  </g>
+  <g id="orangeRing" fill="none" stroke="#c07a2e" stroke-width="3" stroke-linecap="round">
+    <path d="M 224 108 A 100 100 0 0 1 234 150" />
+    <path d="M 66 192 A 100 100 0 0 1 56 150" />
+  </g>
+  <circle id="core" cx="150" cy="150" r="72" fill="#0d3a52"/>
+</svg>
+</div>
+<div id="status">Online</div>
 
 <div id="transcript"></div>
 
@@ -123,6 +151,22 @@
 </div>
 
 <script>
+const tickLines = document.getElementById("tickLines");
+for (let i = 0; i < 40; i++) {
+  const angle = (i / 40) * 2 * Math.PI;
+  const r1 = 128, r2 = i % 5 === 0 ? 116 : 122;
+  const x1 = 150 + r1 * Math.cos(angle);
+  const y1 = 150 + r1 * Math.sin(angle);
+  const x2 = 150 + r2 * Math.cos(angle);
+  const y2 = 150 + r2 * Math.sin(angle);
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  line.setAttribute("x1", x1);
+  line.setAttribute("y1", y1);
+  line.setAttribute("x2", x2);
+  line.setAttribute("y2", y2);
+  tickLines.appendChild(line);
+}
+
 const transcript = document.getElementById("transcript");
 const input = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
@@ -158,12 +202,11 @@ async function sendMessage() {
     });
     const data = await response.json();
     addLine(data.reply, "jarvis");
-    status.textContent = "Systems online";
   } catch (err) {
     addLine("Connection error. Please try again.", "jarvis");
-    status.textContent = "Systems online";
   }
 
+  status.textContent = "Online";
   core.classList.remove("active");
 }
 
